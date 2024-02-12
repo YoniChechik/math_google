@@ -1,7 +1,9 @@
-var scriptProperties = PropertiesService.getScriptProperties();
-
 // TODO add code cogs link
 // TODO image font size 52
+// TODO merge ui (css)
+// TODO build an extansion
+
+var scriptProperties = PropertiesService.getScriptProperties();
 
 function onOpen() {
   SlidesApp.getUi() // Or DocumentApp or FormApp.
