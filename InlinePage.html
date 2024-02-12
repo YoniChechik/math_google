@@ -1,128 +1,303 @@
 <!DOCTYPE html>
 <html>
+  <head>
+    <base target="_top" />
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        margin: 10px;
+      }
 
-<head>
-  <base target="_top">
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      margin: 10px;
-    }
+      #inlineInput {
+        width: calc(100% - 22px);
+        padding: 10px;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        height: 100px;
+      }
 
-    #inlineInput {
-      width: calc(100% - 22px);
-      padding: 10px;
-      border: 1px solid #ccc;
-      border-radius: 4px;
-      height: 100px;
-    }
+      #inlinePreview {
+        padding: 10px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        margin-top: 10px;
+        white-space: pre-wrap;
+        /* Ensures whitespace and line breaks are preserved */
+      }
 
-    #inlinePreview {
-      padding: 10px;
-      border: 1px solid #ddd;
-      border-radius: 4px;
-      margin-top: 10px;
-      white-space: pre-wrap;
-      /* Ensures whitespace and line breaks are preserved */
-    }
+      button {
+        background-color: #4caf50;
+        color: white;
+        padding: 10px 15px;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+      }
 
-    button {
-      background-color: #4CAF50;
-      color: white;
-      padding: 10px 15px;
-      border: none;
-      border-radius: 4px;
-      cursor: pointer;
-    }
+      button:hover {
+        background-color: #45a049;
+      }
+    </style>
+  </head>
 
-    button:hover {
-      background-color: #45a049;
-    }
-  </style>
-</head>
+  <body>
+    <div id="inlineInputContainer">
+      <textarea id="inlineInput" oninput="updateInlinePreview()" placeholder="Enter KaTeX-like text here">
+<?= selectedText ?></textarea
+      >
+    </div>
+    <div id="inlinePreview"></div>
+    <button id="doneButton" onclick="insertInlineEquation()">Done</button>
 
-<body>
-  <div id="inlineInputContainer">
-<textarea id="inlineInput" oninput="updateInlinePreview()" placeholder="Enter KaTeX-like text here"><?= selectedText ?></textarea>
-  </div>
-  <div id="inlinePreview"></div>
-  <button id="doneButton" onclick="insertInlineEquation()">Done</button>
+    <script>
+      document.addEventListener("DOMContentLoaded", function () {
+        var initialText = document.getElementById("inlineInput").value;
+        if (initialText) {
+          var latexLikeText = convertUnicodeToLatex(initialText);
+          document.getElementById("inlineInput").value = latexLikeText;
+          updateInlinePreview(); // To immediately show the converted preview
+        }
+      });
 
-  <script>
-    // Simplified LaTeX to Unicode mapping
-  var latexToUnicode = {
-    "\\alpha": "α",
-    "\\beta": "β",
-    "\\gamma": "γ",
-    "\\delta": "δ",
-    "\\epsilon": "ε",
-    // Add more mappings here
-  };
+      function convertUnicodeToLatex(text) {
+        var output = text;
+        // Iterate over each Unicode character and replace it with the corresponding LaTeX command
+        Object.keys(unicodeToLatex).forEach(function (unicode) {
+          // Use the unicode character itself as the key to find the LaTeX command
+          var pattern = unicode;
+          var regex = new RegExp(escapeRegExp(pattern), "g"); // Escape special regex characters
+          output = output.replace(regex, unicodeToLatex[unicode]);
+        });
+        return output;
+      }
 
-var unicodeToLatex = {};
-// Populate the reverse mapping
-Object.keys(latexToUnicode).forEach(function(latex) {
-  var unicode = latexToUnicode[latex];
-  unicodeToLatex[unicode] = latex;
-});
+      // Helper function to escape special characters for regex
+      function escapeRegExp(string) {
+        return string.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"); // $& means the whole matched string
+      }
 
-document.addEventListener('DOMContentLoaded', function() {
-  var initialText = document.getElementById('inlineInput').value;
-  if (initialText) {
-    var latexLikeText = convertUnicodeToLatex(initialText);
-    document.getElementById('inlineInput').value = latexLikeText;
-    updateInlinePreview(); // To immediately show the converted preview
-  }
-});
+      function updateInlinePreview() {
+        var input = document.getElementById("inlineInput").value;
+        var output = parseKaTeXLikeTextToUnicode(input);
+        document.getElementById("inlinePreview").innerHTML = output;
+      }
 
-function convertUnicodeToLatex(text) {
-  var output = text;
-  // Iterate over each Unicode character and replace it with the corresponding LaTeX command
-  Object.keys(unicodeToLatex).forEach(function(unicode) {
-    // Use the unicode character itself as the key to find the LaTeX command
-    var pattern = unicode;
-    var regex = new RegExp(escapeRegExp(pattern), "g"); // Escape special regex characters
-    output = output.replace(regex, unicodeToLatex[unicode]);
-  });
-  return output;
-}
+      function parseKaTeXLikeTextToUnicode(input) {
+        var output = input;
+        // Iterate over the mappings to replace LaTeX commands with Unicode
+        Object.keys(latexToUnicode).forEach(function (key) {
+          // Adjust the regex to capture the whole LaTeX command including the backslash
+          // and replace it with just the Unicode character, effectively removing the backslash
+          var pattern = key.replace(/\\/g, "\\\\"); // Escape backslash for regex pattern
+          var regex = new RegExp(pattern, "g");
+          output = output.replace(regex, latexToUnicode[key]);
+        });
 
-// Helper function to escape special characters for regex
-function escapeRegExp(string) {
-  return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); // $& means the whole matched string
-}
+        // Enhanced replacement for superscript and subscript to handle both scenarios
+        // With curly braces and without (only the next character)
+        output = output.replace(/\^({(.*?)}|(\w))/g, function (match, p1, p2, p3) {
+          return p2 !== undefined ? `<sup>${p2}</sup>` : `<sup>${p3}</sup>`;
+        });
+        output = output.replace(/_({(.*?)}|(\w))/g, function (match, p1, p2, p3) {
+          return p2 !== undefined ? `<sub>${p2}</sub>` : `<sub>${p3}</sub>`;
+        });
+        return output;
+      }
 
-  function updateInlinePreview() {
-    var input = document.getElementById('inlineInput').value;
-    var output = parseKaTeXLikeTextToUnicode(input);
-    document.getElementById('inlinePreview').textContent = output;
-  }
+      function insertInlineEquation() {
+        var encodedText = document.getElementById("inlinePreview").innerHTML;
+        google.script.run
+          .withSuccessHandler(function () {
+            google.script.host.close(); // Close the dialog on success
+          })
+          .withFailureHandler(function (error) {
+            alert("Error inserting equation: " + error.message);
+          })
+          .insertInlineEquation(encodedText);
+      }
 
-function parseKaTeXLikeTextToUnicode(input) {
-  var output = input;
-  // Iterate over the mappings to replace LaTeX commands with Unicode
-  Object.keys(latexToUnicode).forEach(function(key) {
-    // Adjust the regex to capture the whole LaTeX command including the backslash
-    // and replace it with just the Unicode character, effectively removing the backslash
-    var pattern = key.replace(/\\/g, "\\\\"); // Escape backslash for regex pattern
-    var regex = new RegExp(pattern, "g");
-    output = output.replace(regex, latexToUnicode[key]);
-  });
-  return output;
-}
+      unicodeToLatex = {
+        // Lowercase Greek letters
+        α: "\\alpha",
+        β: "\\beta",
+        γ: "\\gamma",
+        δ: "\\delta",
+        ε: "\\epsilon",
+        ζ: "\\zeta",
+        η: "\\eta",
+        θ: "\\theta",
+        ι: "\\iota",
+        κ: "\\kappa",
+        λ: "\\lambda",
+        μ: "\\mu",
+        ν: "\\nu",
+        ξ: "\\xi",
+        ο: "o", // Note: Omicron is just "o" in LaTeX
+        π: "\\pi",
+        ρ: "\\rho",
+        σ: "\\sigma",
+        τ: "\\tau",
+        υ: "\\upsilon",
+        φ: "\\phi",
+        χ: "\\chi",
+        ψ: "\\psi",
+        ω: "\\omega",
+        // Uppercase Greek letters (Note: Uppercase omicron is omitted because it's represented by "O" in English)
+        Α: "A",
+        Β: "B",
+        Γ: "\\Gamma",
+        Δ: "\\Delta",
+        Ε: "E",
+        Ζ: "Z",
+        Η: "H",
+        Θ: "\\Theta",
+        Ι: "I",
+        Κ: "K",
+        Λ: "\\Lambda",
+        Μ: "M",
+        Ν: "N",
+        Ξ: "\\Xi",
+        Ο: "O",
+        Π: "\\Pi",
+        Ρ: "P",
+        Σ: "\\Sigma",
+        Τ: "T",
+        Υ: "\\Upsilon",
+        Φ: "\\Phi",
+        Χ: "X",
+        Ψ: "\\Psi",
+        Ω: "\\Omega",
+        // Special cases and variants
+        ϑ: "\\vartheta",
+        ϕ: "\\varphi",
+        ς: "\\varsigma",
+        ϵ: "\\varepsilon",
+        // Special mathematical letters
+        ℕ: "\\mathbb{N}", // Natural numbers
+        ℤ: "\\mathbb{Z}", // Integers
+        ℚ: "\\mathbb{Q}", // Rational numbers
+        ℝ: "\\mathbb{R}", // Real numbers
+        ℂ: "\\mathbb{C}", // Complex numbers
+        // Other special symbols
+        ℵ: "\\aleph", // Aleph
+        ℶ: "\\beth", // Beth
+        ℷ: "\\gimel", // Gimel
+        ℸ: "\\daleth", // Daleth
+        // Miscellaneous Symbols
+        ℓ: "\\ell", // Script small L
+        ℏ: "\\hbar", // Reduced Planck's constant (h-bar)
+        "℘": "\\wp", // Weierstrass p (power set)
+        ℜ: "\\Re", // Real part
+        ℑ: "\\Im", // Imaginary part
+        // Operators
+        // "+": "+",
+        // "-": "-",
+        // "=": "=",
+        // "<": "<",
+        // ">": ">",
+        "±": "\\pm",
+        "×": "\\times",
+        "÷": "\\div",
+        "·": "\\cdot",
+        "∓": "\\mp",
+        "≠": "\\neq",
+        "≈": "\\approx",
+        "≤": "\\leq",
+        "≥": "\\geq",
+        "∂": "\\partial",
+        "∇": "\\nabla",
+        // Set and Logic Symbols
+        "∅": "\\emptyset",
+        "∈": "\\in",
+        "∉": "\\notin",
+        "∋": "\\ni",
+        "⊂": "\\subset",
+        "⊃": "\\supset",
+        "⊆": "\\subseteq",
+        "⊇": "\\supseteq",
+        "∪": "\\cup",
+        "∩": "\\cap",
+        "∧": "\\wedge",
+        "∨": "\\vee",
+        "∀": "\\forall",
+        "∃": "\\exists",
+        "¬": "\\neg",
+        "⇒": "\\Rightarrow",
+        "⇐": "\\Leftarrow",
+        // Other Mathematical Symbols
+        "∞": "\\infty",
+        "∫": "\\int",
+        "∑": "\\sum",
+        "∏": "\\prod",
+        "√": "\\sqrt",
+        "∛": "\\sqrt[3]{}", // Cube root
+        "∜": "\\sqrt[4]{}", // Fourth root
+        // Basic arrows
+        "←": "\\leftarrow",
+        "↑": "\\uparrow",
+        "→": "\\rightarrow",
+        "↓": "\\downarrow",
+        "↔": "\\leftrightarrow",
+        "↕": "\\updownarrow",
+        "⇑": "\\Uparrow",
+        "⇓": "\\Downarrow",
+        "⇔": "\\Leftrightarrow",
+        "⇕": "\\Updownarrow",
+        // Diagonal arrows
+        "↖": "\\nwarrow",
+        "↗": "\\nearrow",
+        "↘": "\\searrow",
+        "↙": "\\swarrow",
+        // Double-headed arrows
+        "↞": "\\twoheadleftarrow",
+        "↠": "\\twoheadrightarrow",
+        // Arrows with hooks
+        "↩": "\\hookleftarrow",
+        "↪": "\\hookrightarrow",
+        // Harpoons
+        "↼": "\\leftharpoonup",
+        "↽": "\\leftharpoondown",
+        "⇀": "\\rightharpoonup",
+        "⇁": "\\rightharpoondown",
+        // Long arrows
+        "⟵": "\\longleftarrow",
+        "⟶": "\\longrightarrow",
+        "⟷": "\\longleftrightarrow",
+        "⟸": "\\Longleftarrow",
+        "⟹": "\\Longrightarrow",
+        "⟺": "\\Longleftrightarrow",
+        // Miscellaneous arrows
+        "↬": "\\rightarrowtail",
+        "↭": "\\leftarrowtail",
+        "↮": "\\nleftrightarrow",
+        "↯": "\\downzigzagarrow",
+        "⇆": "\\leftrightarrows",
+        "⇇": "\\leftleftarrows",
+        "⇉": "\\rightrightarrows",
+        "⇊": "\\downdownarrows",
+        "⇋": "\\leftrightharpoons",
+        "⇌": "\\rightleftharpoons",
+        "⇍": "\\nLeftarrow",
+        "⇏": "\\nRightarrow",
+        "⇎": "\\nLeftrightarrow",
+        // Angles
+        "∠": "\\angle",
+        "∡": "\\measuredangle",
+        "∢": "\\sphericalangle",
+        // Integrals
+        "∬": "\\iint",
+        "∭": "\\iiint",
+        "∮": "\\oint",
+        "∯": "\\oiint",
+        "∰": "\\oiiint",
+      };
 
-    function insertInlineEquation() {
-    var equationText = document.getElementById('inlinePreview').textContent;
-    google.script.run
-      .withSuccessHandler(function() {
-        google.script.host.close(); // Close the dialog on success
-      })
-      .withFailureHandler(function(error) {
-        alert("Error inserting equation: " + error.message);
-      })
-      .insertInlineEquation(equationText);
-  }
-  </script>
-</body>
-
+      var latexToUnicode = {};
+      // Populate the reverse mapping
+      Object.keys(unicodeToLatex).forEach(function (unicode) {
+        var latex = unicodeToLatex[unicode];
+        latexToUnicode[latex] = unicode;
+      });
+    </script>
+  </body>
 </html>
