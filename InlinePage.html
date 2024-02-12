@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <base target="_top">
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 10px;
+    }
+
+    #inlineInput {
+      width: calc(100% - 22px);
+      padding: 10px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      height: 100px;
+    }
+
+    #inlinePreview {
+      padding: 10px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      margin-top: 10px;
+      white-space: pre-wrap;
+      /* Ensures whitespace and line breaks are preserved */
+    }
+
+    button {
+      background-color: #4CAF50;
+      color: white;
+      padding: 10px 15px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background-color: #45a049;
+    }
+  </style>
+</head>
+
+<body>
+  <div id="inlineInputContainer">
+<textarea id="inlineInput" oninput="updateInlinePreview()" placeholder="Enter KaTeX-like text here"><?= selectedText ?></textarea>
+  </div>
+  <div id="inlinePreview"></div>
+  <button id="doneButton" onclick="insertInlineEquation()">Done</button>
+
+  <script>
+    // Simplified LaTeX to Unicode mapping
+  var latexToUnicode = {
+    "\\alpha": "α",
+    "\\beta": "β",
+    "\\gamma": "γ",
+    "\\delta": "δ",
+    "\\epsilon": "ε",
+    // Add more mappings here
+  };
+
+var unicodeToLatex = {};
+// Populate the reverse mapping
+Object.keys(latexToUnicode).forEach(function(latex) {
+  var unicode = latexToUnicode[latex];
+  unicodeToLatex[unicode] = latex;
+});
+
+document.addEventListener('DOMContentLoaded', function() {
+  var initialText = document.getElementById('inlineInput').value;
+  if (initialText) {
+    var latexLikeText = convertUnicodeToLatex(initialText);
+    document.getElementById('inlineInput').value = latexLikeText;
+    updateInlinePreview(); // To immediately show the converted preview
+  }
+});
+
+function convertUnicodeToLatex(text) {
+  var output = text;
+  // Iterate over each Unicode character and replace it with the corresponding LaTeX command
+  Object.keys(unicodeToLatex).forEach(function(unicode) {
+    // Use the unicode character itself as the key to find the LaTeX command
+    var pattern = unicode;
+    var regex = new RegExp(escapeRegExp(pattern), "g"); // Escape special regex characters
+    output = output.replace(regex, unicodeToLatex[unicode]);
+  });
+  return output;
+}
+
+// Helper function to escape special characters for regex
+function escapeRegExp(string) {
+  return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); // $& means the whole matched string
+}
+
+  function updateInlinePreview() {
+    var input = document.getElementById('inlineInput').value;
+    var output = parseKaTeXLikeTextToUnicode(input);
+    document.getElementById('inlinePreview').textContent = output;
+  }
+
+function parseKaTeXLikeTextToUnicode(input) {
+  var output = input;
+  // Iterate over the mappings to replace LaTeX commands with Unicode
+  Object.keys(latexToUnicode).forEach(function(key) {
+    // Adjust the regex to capture the whole LaTeX command including the backslash
+    // and replace it with just the Unicode character, effectively removing the backslash
+    var pattern = key.replace(/\\/g, "\\\\"); // Escape backslash for regex pattern
+    var regex = new RegExp(pattern, "g");
+    output = output.replace(regex, latexToUnicode[key]);
+  });
+  return output;
+}
+
+    function insertInlineEquation() {
+    var equationText = document.getElementById('inlinePreview').textContent;
+    google.script.run
+      .withSuccessHandler(function() {
+        google.script.host.close(); // Close the dialog on success
+      })
+      .withFailureHandler(function(error) {
+        alert("Error inserting equation: " + error.message);
+      })
+      .insertInlineEquation(equationText);
+  }
+  </script>
+</body>
+
+</html>

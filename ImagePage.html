@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <base target="_top">
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 10px;
+    }
+
+    #latexInputContainer,
+    #latexImageContainer,
+    #doneButtonContainer {
+      margin-bottom: 10px;
+      /* Adds space between the elements */
+    }
+
+    #latexInput {
+      width: calc(100% - 22px);
+      padding: 10px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      height: 100px;
+    }
+
+    button {
+      background-color: #4CAF50;
+      color: white;
+      padding: 10px 15px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      display: block;
+      /* Ensures the button expands to full container width */
+    }
+
+    button:hover {
+      background-color: #45a049;
+    }
+
+    img#latexImage {
+      max-width: 100%;
+      display: block;
+      /* Ensures the image is block level for margin to work */
+      margin: 0 auto;
+      /* Centers the image */
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      padding: 5px;
+    }
+  </style>
+</head>
+
+<body>
+  <div id="latexInputContainer">
+    <textarea id="latexInput" oninput="updateImageOnInput()" placeholder="Enter LaTeX code here"><?= equation ?></textarea>
+  </div>
+  <div id="latexImageContainer">
+    <img id="latexImage" src="" alt="LaTeX output will appear here"/>
+  </div>
+  <div id="doneButtonContainer">
+    <button id="doneButton" onclick="insertEquation()">Done</button>
+  </div>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+updateImage("<?= equation ?>");
+});
+
+
+    function updateImageOnInput() {
+      var input = document.getElementById('latexInput').value;
+      updateImage(input);
+    }
+
+    function updateImage(input) {
+      var encodedInput = encodeURIComponent(input);
+      var imageUrl = "https://latex.codecogs.com/svg.image?" + encodedInput;
+      document.getElementById('latexImage').src = imageUrl;
+    }
+
+  function insertEquation() {
+  var input = document.getElementById('latexInput').value;
+  var encodedInput = encodeURIComponent(input);
+  var imageUrl = "https://latex.codecogs.com/png.image?\\huge \\dpi{1000}" + encodedInput;
+
+    // Disable the button and change its appearance
+      var doneButton = document.getElementById('doneButton');
+    doneButton.disabled = true;
+    doneButton.style.backgroundColor = '#cccccc'; // Grey color
+    doneButton.innerText = 'Processing...'; // Change button text to indicate processing
+
+  google.script.run.withSuccessHandler(function(response) {  
+        google.script.host.close();
+    }).withFailureHandler(function(error) {
+      alert("Error: " + error.message);
+    }).insertImage(imageUrl,input);
+  }
+  </script>
+</body>
+
+</html>
